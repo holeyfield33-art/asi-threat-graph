@@ -20,6 +20,13 @@ const catalogRevision = CATALOG_REF.slice(0, 12);
 
 const ASI_FILES = ['attack-classes-01', 'attack-classes-02', 'mitigations', 'sources'];
 
+// Cache path is SCOPED TO THE REF. A different ASI_CATALOG_REF (or a stale
+// pre-pin file fetched from `main`) therefore never gets reused and re-labeled:
+// the ref is in the filename, so a ref change forces a fresh download. Without
+// this, cached bytes from one ref could be stamped with — and hashed under —
+// another ref, silently defeating the provenance guarantee.
+const fileFor = (base) => path.join(DATA, `asi-${base}.${catalogRevision}.json`);
+
 function loadJson(p) {
   return JSON.parse(fs.readFileSync(p, 'utf8'));
 }
@@ -31,26 +38,27 @@ function sha256File(p) {
 async function ensureAsiData() {
   if (!fs.existsSync(DATA)) fs.mkdirSync(DATA, { recursive: true });
   for (const base of ASI_FILES) {
-    const dest = path.join(DATA, `asi-${base}.json`);
-    if (fs.existsSync(dest)) continue;
+    const dest = fileFor(base);
+    if (fs.existsSync(dest)) continue; // safe to reuse: filename is ref-scoped
     const url = `https://raw.githubusercontent.com/holeyfield33-art/agent-security-index/${CATALOG_REF}/public/export/${base}.json`;
-    console.log('Fetching', `asi-${base}.json`, 'from', CATALOG_REF.slice(0, 12), '...');
+    console.log('Fetching', `asi-${base}.json`, 'from', catalogRevision, '...');
     const res = await fetch(url);
     if (!res.ok) throw new Error(`Failed to fetch ${url}: ${res.status}`);
     fs.writeFileSync(dest, await res.text());
   }
   // Content hashes of exactly what was imported — provenance you can verify.
+  // Keyed by the stable logical name; the ref is recorded separately in sources.asi.
   const contentHashes = {};
-  for (const base of ASI_FILES) contentHashes[`asi-${base}.json`] = sha256File(path.join(DATA, `asi-${base}.json`));
+  for (const base of ASI_FILES) contentHashes[`asi-${base}.json`] = sha256File(fileFor(base));
   return contentHashes;
 }
 
 async function build() {
   const catalogHashes = await ensureAsiData();
-  const ac1 = loadJson(path.join(DATA, 'asi-attack-classes-01.json'));
-  const ac2 = loadJson(path.join(DATA, 'asi-attack-classes-02.json'));
-  const mitigations = loadJson(path.join(DATA, 'asi-mitigations.json'));
-  const sources = loadJson(path.join(DATA, 'asi-sources.json'));
+  const ac1 = loadJson(fileFor('attack-classes-01'));
+  const ac2 = loadJson(fileFor('attack-classes-02'));
+  const mitigations = loadJson(fileFor('mitigations'));
+  const sources = loadJson(fileFor('sources'));
   const atlas = loadJson(path.join(DATA, 'code-atlas-sample.json'));
 
   const attackClasses = [...ac1, ...ac2];
