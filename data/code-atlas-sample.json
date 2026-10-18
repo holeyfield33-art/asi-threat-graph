@@ -1,0 +1,260 @@
+{
+  "schemaVersion": "1.0",
+  "product": { "name": "sample-agent-app" },
+  "repository": { "label": "sample-agent-app", "revision": "fixture-rev-001" },
+  "generatedAt": "2026-10-17T00:00:00Z",
+  "graph": {
+    "version": "0.1",
+    "revision": "fixture-rev-001",
+    "nodes": [
+      {
+        "id": "file:src/server.ts",
+        "kind": "file",
+        "label": "src/server.ts",
+        "evidence": {
+          "path": "src/server.ts",
+          "line": 1,
+          "column": 0,
+          "revision": "fixture-rev-001",
+          "contentHash": "abc123fixture",
+          "method": "babel-static",
+          "status": "static"
+        }
+      },
+      {
+        "id": "fn:src/server.ts#createApp",
+        "kind": "function",
+        "label": "createApp",
+        "evidence": {
+          "path": "src/server.ts",
+          "line": 12,
+          "column": 0,
+          "revision": "fixture-rev-001",
+          "contentHash": "abc123fixture",
+          "method": "babel-static",
+          "status": "static"
+        }
+      },
+      {
+        "id": "fn:src/server.ts#handlePrompt",
+        "kind": "function",
+        "label": "handlePrompt",
+        "evidence": {
+          "path": "src/server.ts",
+          "line": 45,
+          "column": 0,
+          "revision": "fixture-rev-001",
+          "contentHash": "abc123fixture",
+          "method": "babel-static",
+          "status": "static"
+        }
+      },
+      {
+        "id": "fn:src/server.ts#callTool",
+        "kind": "function",
+        "label": "callTool",
+        "evidence": {
+          "path": "src/server.ts",
+          "line": 78,
+          "column": 0,
+          "revision": "fixture-rev-001",
+          "contentHash": "abc123fixture",
+          "method": "babel-static",
+          "status": "static"
+        }
+      },
+      {
+        "id": "fn:src/auth.ts#checkAuth",
+        "kind": "function",
+        "label": "checkAuth",
+        "evidence": {
+          "path": "src/auth.ts",
+          "line": 10,
+          "column": 0,
+          "revision": "fixture-rev-001",
+          "contentHash": "def456fixture",
+          "method": "babel-static",
+          "status": "static"
+        }
+      },
+      {
+        "id": "file:src/auth.ts",
+        "kind": "file",
+        "label": "src/auth.ts",
+        "evidence": {
+          "path": "src/auth.ts",
+          "line": 1,
+          "column": 0,
+          "revision": "fixture-rev-001",
+          "contentHash": "def456fixture",
+          "method": "babel-static",
+          "status": "static"
+        }
+      },
+      {
+        "id": "fn:src/tools.ts#executeShell",
+        "kind": "function",
+        "label": "executeShell",
+        "evidence": {
+          "path": "src/tools.ts",
+          "line": 22,
+          "column": 0,
+          "revision": "fixture-rev-001",
+          "contentHash": "ghi789fixture",
+          "method": "babel-static",
+          "status": "static"
+        }
+      },
+      {
+        "id": "file:src/tools.ts",
+        "kind": "file",
+        "label": "src/tools.ts",
+        "evidence": {
+          "path": "src/tools.ts",
+          "line": 1,
+          "column": 0,
+          "revision": "fixture-rev-001",
+          "contentHash": "ghi789fixture",
+          "method": "babel-static",
+          "status": "static"
+        }
+      }
+    ],
+    "edges": [
+      {
+        "id": "e1",
+        "from": "file:src/server.ts",
+        "to": "fn:src/server.ts#createApp",
+        "kind": "contains",
+        "evidence": {
+          "path": "src/server.ts",
+          "line": 12,
+          "column": 0,
+          "revision": "fixture-rev-001",
+          "contentHash": "abc123fixture",
+          "method": "babel-static",
+          "status": "static"
+        },
+        "confidence": "resolved"
+      },
+      {
+        "id": "e2",
+        "from": "file:src/server.ts",
+        "to": "fn:src/server.ts#handlePrompt",
+        "kind": "contains",
+        "evidence": {
+          "path": "src/server.ts",
+          "line": 45,
+          "column": 0,
+          "revision": "fixture-rev-001",
+          "contentHash": "abc123fixture",
+          "method": "babel-static",
+          "status": "static"
+        },
+        "confidence": "resolved"
+      },
+      {
+        "id": "e3",
+        "from": "fn:src/server.ts#handlePrompt",
+        "to": "fn:src/server.ts#callTool",
+        "kind": "calls",
+        "evidence": {
+          "path": "src/server.ts",
+          "line": 52,
+          "column": 4,
+          "revision": "fixture-rev-001",
+          "contentHash": "abc123fixture",
+          "method": "babel-static",
+          "status": "static"
+        },
+        "confidence": "resolved"
+      },
+      {
+        "id": "e4",
+        "from": "fn:src/server.ts#callTool",
+        "to": "fn:src/tools.ts#executeShell",
+        "kind": "calls",
+        "evidence": {
+          "path": "src/server.ts",
+          "line": 85,
+          "column": 2,
+          "revision": "fixture-rev-001",
+          "contentHash": "abc123fixture",
+          "method": "babel-static",
+          "status": "static"
+        },
+        "confidence": "resolved"
+      },
+      {
+        "id": "e5",
+        "from": "fn:src/server.ts#handlePrompt",
+        "to": "fn:src/auth.ts#checkAuth",
+        "kind": "calls",
+        "evidence": {
+          "path": "src/server.ts",
+          "line": 48,
+          "column": 2,
+          "revision": "fixture-rev-001",
+          "contentHash": "abc123fixture",
+          "method": "babel-static",
+          "status": "static"
+        },
+        "confidence": "resolved"
+      },
+      {
+        "id": "e6",
+        "from": "file:src/auth.ts",
+        "to": "fn:src/auth.ts#checkAuth",
+        "kind": "contains",
+        "evidence": {
+          "path": "src/auth.ts",
+          "line": 10,
+          "column": 0,
+          "revision": "fixture-rev-001",
+          "contentHash": "def456fixture",
+          "method": "babel-static",
+          "status": "static"
+        },
+        "confidence": "resolved"
+      },
+      {
+        "id": "e7",
+        "from": "file:src/tools.ts",
+        "to": "fn:src/tools.ts#executeShell",
+        "kind": "contains",
+        "evidence": {
+          "path": "src/tools.ts",
+          "line": 22,
+          "column": 0,
+          "revision": "fixture-rev-001",
+          "contentHash": "ghi789fixture",
+          "method": "babel-static",
+          "status": "static"
+        },
+        "confidence": "resolved"
+      }
+    ],
+    "diagnostics": []
+  },
+  "routes": [
+    {
+      "method": "POST",
+      "path": "/api/prompt",
+      "template": "/api/prompt",
+      "nodeRef": "fn:src/server.ts#handlePrompt",
+      "handler": "handlePrompt",
+      "evidence": {
+        "path": "src/server.ts",
+        "line": 30,
+        "column": 0,
+        "revision": "fixture-rev-001",
+        "contentHash": "abc123fixture",
+        "method": "babel-static",
+        "status": "static"
+      },
+      "framework": "express"
+    }
+  ],
+  "findings": [],
+  "diagnostics": []
+}
