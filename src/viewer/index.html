@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>ASI Threat Graph</title>
+  <script src="https://unpkg.com/vis-network@9.1.9/standalone/umd/vis-network.min.js"></script>
+  <style>
+    :root { --bg: #0d1117; --panel: #161b22; --text: #e6edf3; --muted: #8b949e; --accent: #58a6ff; --border: #30363d; }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: ui-sans-serif, system-ui, sans-serif; background: var(--bg); color: var(--text); height: 100vh; display: flex; flex-direction: column; }
+    header { padding: 10px 16px; background: var(--panel); border-bottom: 1px solid var(--border); display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+    header h1 { font-size: 1.1rem; margin: 0; font-weight: 600; }
+    header input, header select { background: var(--bg); border: 1px solid var(--border); color: var(--text); padding: 6px 10px; border-radius: 6px; }
+    #main { flex: 1; display: flex; min-height: 0; }
+    #network { flex: 1; }
+    #side { width: 340px; background: var(--panel); border-left: 1px solid var(--border); overflow: auto; padding: 12px; font-size: 0.9rem; }
+    #side h2 { font-size: 1rem; margin: 0 0 8px; }
+    .meta { color: var(--muted); font-size: 0.8rem; }
+    .badge { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 0.75rem; margin-right: 4px; }
+    .badge.asi { background: #238636; }
+    .badge.app { background: #1f6feb; }
+    .badge.hypo { background: #9e6a03; }
+    .badge.obs { background: #238636; }
+    pre { white-space: pre-wrap; word-break: break-word; background: var(--bg); padding: 8px; border-radius: 6px; font-size: 0.75rem; }
+    .edge-list { margin-top: 8px; }
+    .edge-item { padding: 6px 0; border-bottom: 1px solid var(--border); }
+    button { background: var(--accent); color: #000; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-weight: 600; }
+    #legend { display: flex; gap: 10px; flex-wrap: wrap; font-size: 0.75rem; color: var(--muted); }
+    .dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; margin-right: 4px; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>ASI Threat Graph</h1>
+    <input id="search" type="search" placeholder="Search AAC, CWE, CVE, route, function..." style="min-width:220px" />
+    <select id="filterLayer">
+      <option value="all">All layers</option>
+      <option value="asi">ASI only</option>
+      <option value="application">Application only</option>
+    </select>
+    <select id="filterStatus">
+      <option value="all">All evidence</option>
+      <option value="observed">Observed</option>
+      <option value="documented">Documented</option>
+      <option value="hypothetical">Hypothetical</option>
+      <option value="inferred">Inferred</option>
+    </select>
+    <button id="reset">Reset view</button>
+    <div id="legend">
+      <span><span class="dot" style="background:#3fb950"></span>Attack class</span>
+      <span><span class="dot" style="background:#58a6ff"></span>App node</span>
+      <span><span class="dot" style="background:#d29922"></span>Route / CVE</span>
+      <span><span class="dot" style="background:#f85149"></span>Hypothetical edge</span>
+    </div>
+  </header>
+  <div id="main">
+    <div id="network"></div>
+    <aside id="side">
+      <h2>Select a node</h2>
+      <p class="meta">Click any node for description, source, confidence, evidence and relationships. Hypothetical links are marked and must not be treated as confirmed vulnerabilities.</p>
+    </aside>
+  </div>
+  <script>
+    let graph = null;
+    let network = null;
+    let allNodes = [];
+    let allEdges = [];
+
+    const typeColor = {
+      attack_class: '#3fb950',
+      owasp: '#a371f7',
+      cve: '#d29922',
+      mitigation: '#7ee787',
+      source: '#8b949e',
+      file: '#58a6ff',
+      function: '#79c0ff',
+      route: '#f0883e',
+      default: '#c9d1d9'
+    };
+
+    async function init() {
+      const res = await fetch('/api/v1/graph');
+      graph = await res.json();
+      allNodes = graph.nodes.map(n => ({
+        id: n.id,
+        label: n.label || n.id,
+        title: n.description || n.label,
+        group: n.layer,
+        color: typeColor[n.type] || typeColor.default,
+        shape: n.layer === 'asi' ? 'dot' : 'box',
+        size: n.type === 'attack_class' ? 18 : 12,
+        font: { color: '#e6edf3', size: 11 },
+        data: n
+      }));
+      allEdges = graph.edges.map(e => ({
+        id: e.id,
+        from: e.from,
+        to: e.to,
+        label: e.kind,
+        arrows: 'to',
+        color: e.evidenceStatus === 'hypothetical' ? { color: '#f85149' } : { color: '#484f58' },
+        dashes: e.evidenceStatus === 'hypothetical' || e.evidenceStatus === 'inferred',
+        width: e.evidenceStatus === 'hypothetical' ? 2 : 1,
+        font: { size: 9, color: '#8b949e', strokeWidth: 0 },
+        data: e
+      }));
+      draw(allNodes, allEdges);
+      document.getElementById('search').addEventListener('input', applyFilters);
+      document.getElementById('filterLayer').addEventListener('change', applyFilters);
+      document.getElementById('filterStatus').addEventListener('change', applyFilters);
+      document.getElementById('reset').addEventListener('click', () => {
+        document.getElementById('search').value = '';
+        document.getElementById('filterLayer').value = 'all';
+        document.getElementById('filterStatus').value = 'all';
+        draw(allNodes, allEdges);
+      });
+    }
+
+    function applyFilters() {
+      const q = document.getElementById('search').value.toLowerCase();
+      const layer = document.getElementById('filterLayer').value;
+      const status = document.getElementById('filterStatus').value;
+      let nodes = allNodes.filter(n => {
+        if (layer !== 'all' && n.group !== layer) return false;
+        if (q) {
+          const d = n.data;
+          const hay = [n.id, n.label, d.description, ...(d.cveIds||[])].join(' ').toLowerCase();
+          if (!hay.includes(q)) return false;
+        }
+        return true;
+      });
+      const ids = new Set(nodes.map(n => n.id));
+      let edges = allEdges.filter(e => {
+        if (!ids.has(e.from) || !ids.has(e.to)) return false;
+        if (status !== 'all' && e.data.evidenceStatus !== status) return false;
+        return true;
+      });
+      if (status !== 'all') {
+        const keep = new Set();
+        edges.forEach(e => { keep.add(e.from); keep.add(e.to); });
+        nodes = nodes.filter(n => keep.has(n.id) || (q && true));
+      }
+      draw(nodes, edges);
+    }
+
+    function draw(nodes, edges) {
+      const container = document.getElementById('network');
+      const data = { nodes: new vis.DataSet(nodes), edges: new vis.DataSet(edges) };
+      const options = {
+        physics: { stabilization: true, barnesHut: { gravitationalConstant: -3000, springLength: 120 } },
+        interaction: { hover: true, tooltipDelay: 120, navigationButtons: true, keyboard: true },
+        edges: { smooth: { type: 'continuous' } }
+      };
+      if (network) network.destroy();
+      network = new vis.Network(container, data, options);
+      network.on('click', params => {
+        if (params.nodes.length) showNode(params.nodes[0]);
+        else if (params.edges.length) showEdge(params.edges[0]);
+      });
+    }
+
+    function showNode(id) {
+      const n = graph.nodes.find(x => x.id === id);
+      if (!n) return;
+      const related = graph.edges.filter(e => e.from === id || e.to === id);
+      const side = document.getElementById('side');
+      side.innerHTML = `
+        <h2>${escapeHtml(n.label || n.id)}</h2>
+        <div><span class="badge ${n.layer === 'asi' ? 'asi' : 'app'}">${n.layer}</span>
+        <span class="badge">${n.type}</span>
+        <span class="badge ${n.evidenceStatus === 'hypothetical' ? 'hypo' : 'obs'}">${n.evidenceStatus || 'n/a'}</span></div>
+        <p>${escapeHtml(n.description || '')}</p>
+        <p class="meta">Confidence: ${n.confidence || 'n/a'}</p>
+        ${n.cveIds?.length ? `<p class="meta">CVEs: ${n.cveIds.join(', ')}</p>` : ''}
+        ${n.owasp?.length ? `<p class="meta">OWASP: ${n.owasp.join(', ')}</p>` : ''}
+        <h3>Source / Provenance</h3>
+        <pre>${escapeHtml(JSON.stringify(n.source || n.provenance || {}, null, 2))}</pre>
+        <h3>Relationships (${related.length})</h3>
+        <div class="edge-list">
+          ${related.map(e => `
+            <div class="edge-item">
+              <strong>${e.kind}</strong>
+              <span class="badge ${e.evidenceStatus === 'hypothetical' ? 'hypo' : 'obs'}">${e.evidenceStatus}</span><br/>
+              ${e.from === id ? '→ ' + e.to : '← ' + e.from}
+              ${e.note ? `<div class="meta">${escapeHtml(e.note)}</div>` : ''}
+            </div>
+          `).join('')}
+        </div>
+      `;
+    }
+
+    function showEdge(id) {
+      const e = graph.edges.find(x => x.id === id);
+      if (!e) return;
+      document.getElementById('side').innerHTML = `
+        <h2>Edge ${escapeHtml(e.kind)}</h2>
+        <p>${e.from} → ${e.to}</p>
+        <span class="badge ${e.evidenceStatus === 'hypothetical' ? 'hypo' : 'obs'}">${e.evidenceStatus}</span>
+        <p class="meta">Confidence: ${e.confidence}</p>
+        ${e.note ? `<p><strong>Note:</strong> ${escapeHtml(e.note)}</p>` : ''}
+        <pre>${escapeHtml(JSON.stringify(e.source, null, 2))}</pre>
+      `;
+    }
+
+    function escapeHtml(s) {
+      return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    }
+
+    init().catch(err => {
+      document.getElementById('side').innerHTML = `<p style="color:#f85149">Failed to load graph: ${err.message}. Run npm run build-graph first.</p>`;
+    });
+  </script>
+</body>
+</html>
