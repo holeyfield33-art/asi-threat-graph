@@ -15,7 +15,26 @@ function loadJson(p) {
   return JSON.parse(fs.readFileSync(p, 'utf8'));
 }
 
-function build() {
+async function ensureAsiData() {
+  if (!fs.existsSync(DATA)) fs.mkdirSync(DATA, { recursive: true });
+  const files = [
+    ['asi-attack-classes-01.json', 'https://raw.githubusercontent.com/holeyfield33-art/agent-security-index/main/public/export/attack-classes-01.json'],
+    ['asi-attack-classes-02.json', 'https://raw.githubusercontent.com/holeyfield33-art/agent-security-index/main/public/export/attack-classes-02.json'],
+    ['asi-mitigations.json', 'https://raw.githubusercontent.com/holeyfield33-art/agent-security-index/main/public/export/mitigations.json'],
+    ['asi-sources.json', 'https://raw.githubusercontent.com/holeyfield33-art/agent-security-index/main/public/export/sources.json'],
+  ];
+  for (const [name, url] of files) {
+    const dest = path.join(DATA, name);
+    if (fs.existsSync(dest)) continue;
+    console.log('Fetching', name, '...');
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`Failed to fetch ${url}: ${res.status}`);
+    fs.writeFileSync(dest, await res.text());
+  }
+}
+
+async function build() {
+  await ensureAsiData();
   const ac1 = loadJson(path.join(DATA, 'asi-attack-classes-01.json'));
   const ac2 = loadJson(path.join(DATA, 'asi-attack-classes-02.json'));
   const mitigations = loadJson(path.join(DATA, 'asi-mitigations.json'));
@@ -336,4 +355,4 @@ function build() {
   return graph;
 }
 
-build();
+build().catch(err => { console.error(err); process.exit(1); });
