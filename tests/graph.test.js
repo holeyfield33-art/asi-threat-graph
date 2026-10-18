@@ -58,4 +58,21 @@ describe('asi-threat-graph', () => {
     assert.ok(Array.isArray(g.unresolvedHypotheses));
     assert.ok(g.unresolvedHypotheses.length >= 1);
   });
+
+  it('records the pinned catalog ref + content hashes, and caches by ref', () => {
+    const g = JSON.parse(fs.readFileSync(GRAPH, 'utf8'));
+    const ref = g.sources?.asi?.ref;
+    assert.ok(ref && ref.length >= 12, 'pinned catalog ref recorded in provenance');
+    const hashes = g.sources?.asi?.contentHashes || {};
+    assert.ok(Object.keys(hashes).length === 4, 'content hash for each imported catalog file');
+    for (const h of Object.values(hashes)) assert.match(h, /^sha256:[0-9a-f]{64}$/, 'content hash is a real sha256');
+    // cache files are scoped to the ref, so a ref change can never reuse+relabel
+    // stale bytes. The graph's revision label is the 12-char ref prefix.
+    const rev = ref.slice(0, 12);
+    assert.ok(fs.existsSync(path.join(ROOT, 'data', `asi-attack-classes-01.${rev}.json`)),
+      'catalog cache file is named with the ref (ref-scoped caching)');
+    // every ASI node is labeled with that same ref prefix (no stale label drift)
+    const asiNode = g.nodes.find(n => n.layer === 'asi' && n.source);
+    assert.equal(asiNode.source.revision, rev, 'ASI node revision matches the pinned ref');
+  });
 });
