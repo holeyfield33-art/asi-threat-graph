@@ -4,6 +4,7 @@
  */
 import fs from 'fs';
 import path from 'path';
+import crypto from 'crypto';
 import { fileURLToPath } from 'url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -11,30 +12,41 @@ const ROOT = path.join(__dirname, '..');
 const DATA = path.join(ROOT, 'data');
 const OUT = path.join(DATA, 'threat-graph.json');
 
+// Pin the ASI catalog to an immutable commit so builds are reproducible and the
+// recorded provenance is truthful (fetching from `main` would stamp a fixed
+// revision label onto whatever main happened to be). Override with ASI_CATALOG_REF.
+const CATALOG_REF = process.env.ASI_CATALOG_REF || 'f5b4bfe139718a50308b0ee58cbb5f0e248599fa';
+const catalogRevision = CATALOG_REF.slice(0, 12);
+
+const ASI_FILES = ['attack-classes-01', 'attack-classes-02', 'mitigations', 'sources'];
+
 function loadJson(p) {
   return JSON.parse(fs.readFileSync(p, 'utf8'));
 }
 
+function sha256File(p) {
+  return 'sha256:' + crypto.createHash('sha256').update(fs.readFileSync(p)).digest('hex');
+}
+
 async function ensureAsiData() {
   if (!fs.existsSync(DATA)) fs.mkdirSync(DATA, { recursive: true });
-  const files = [
-    ['asi-attack-classes-01.json', 'https://raw.githubusercontent.com/holeyfield33-art/agent-security-index/main/public/export/attack-classes-01.json'],
-    ['asi-attack-classes-02.json', 'https://raw.githubusercontent.com/holeyfield33-art/agent-security-index/main/public/export/attack-classes-02.json'],
-    ['asi-mitigations.json', 'https://raw.githubusercontent.com/holeyfield33-art/agent-security-index/main/public/export/mitigations.json'],
-    ['asi-sources.json', 'https://raw.githubusercontent.com/holeyfield33-art/agent-security-index/main/public/export/sources.json'],
-  ];
-  for (const [name, url] of files) {
-    const dest = path.join(DATA, name);
+  for (const base of ASI_FILES) {
+    const dest = path.join(DATA, `asi-${base}.json`);
     if (fs.existsSync(dest)) continue;
-    console.log('Fetching', name, '...');
+    const url = `https://raw.githubusercontent.com/holeyfield33-art/agent-security-index/${CATALOG_REF}/public/export/${base}.json`;
+    console.log('Fetching', `asi-${base}.json`, 'from', CATALOG_REF.slice(0, 12), '...');
     const res = await fetch(url);
     if (!res.ok) throw new Error(`Failed to fetch ${url}: ${res.status}`);
     fs.writeFileSync(dest, await res.text());
   }
+  // Content hashes of exactly what was imported — provenance you can verify.
+  const contentHashes = {};
+  for (const base of ASI_FILES) contentHashes[`asi-${base}.json`] = sha256File(path.join(DATA, `asi-${base}.json`));
+  return contentHashes;
 }
 
 async function build() {
-  await ensureAsiData();
+  const catalogHashes = await ensureAsiData();
   const ac1 = loadJson(path.join(DATA, 'asi-attack-classes-01.json'));
   const ac2 = loadJson(path.join(DATA, 'asi-attack-classes-02.json'));
   const mitigations = loadJson(path.join(DATA, 'asi-mitigations.json'));
@@ -72,7 +84,7 @@ async function build() {
       owasp: ac.owasp || [],
       source: {
         identity: 'agent-security-index',
-        revision: 'catalog-v2026.09',
+        revision: catalogRevision,
         path: `public/export/attack-classes-*.json`,
         status: 'observed'
       },
@@ -94,7 +106,7 @@ async function build() {
         confidence: 'high',
         source: {
           identity: 'agent-security-index',
-          revision: 'catalog-v2026.09',
+          revision: catalogRevision,
           status: 'observed'
         }
       });
@@ -121,7 +133,7 @@ async function build() {
         confidence: 'high',
         source: {
           identity: 'agent-security-index',
-          revision: 'catalog-v2026.09',
+          revision: catalogRevision,
           status: 'observed'
         }
       });
@@ -150,7 +162,7 @@ async function build() {
         confidence: mnode.validated ? 'medium' : 'low',
         source: {
           identity: 'agent-security-index',
-          revision: 'catalog-v2026.09',
+          revision: catalogRevision,
           status: 'observed'
         }
       });
@@ -178,7 +190,7 @@ async function build() {
       confidence: 'high',
       source: {
         identity: 'agent-security-index',
-        revision: 'catalog-v2026.09',
+        revision: catalogRevision,
         url: src.url,
         status: 'observed'
       }
@@ -332,7 +344,12 @@ async function build() {
     schemaVersion: '0.1.0',
     generatedAt: new Date().toISOString(),
     sources: {
-      asi: { identity: 'holeyfield33-art/agent-security-index', revision: 'catalog-v2026.09' },
+      asi: {
+        identity: 'holeyfield33-art/agent-security-index',
+        revision: catalogRevision,
+        ref: CATALOG_REF,
+        contentHashes: catalogHashes
+      },
       atlas: { identity: 'code-atlas-sample', revision: atlas.repository?.revision }
     },
     counts: {

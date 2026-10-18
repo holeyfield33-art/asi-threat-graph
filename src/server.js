@@ -88,18 +88,18 @@ app.get('/api/v1/trace/route', (req, res) => {
 
   // BFS along CALLS / ROUTES_TO / CONTAINS
   const visited = new Set();
-  const path = [];
+  const tracePath = []; // not `path` — that name is the imported node:path module
   const queue = [routeNode.id];
   while (queue.length) {
     const cur = queue.shift();
     if (visited.has(cur)) continue;
     visited.add(cur);
     const n = g.nodes.find(x => x.id === cur);
-    path.push(n);
+    tracePath.push(n);
     const outs = g.edges.filter(e => e.from === cur && ['ROUTES_TO', 'CALLS', 'CONTAINS'].includes(e.kind));
     for (const e of outs) queue.push(e.to);
   }
-  res.json({ route: routeNode, path });
+  res.json({ route: routeNode, path: tracePath });
 });
 
 // Unresolved security hypotheses
