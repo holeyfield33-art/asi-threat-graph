@@ -1,0 +1,20 @@
+{
+  "name": "asi-threat-graph",
+  "version": "0.1.0",
+  "description": "Interactive evidence-backed security threat graph linking ASI attack classes to Code Atlas application graphs",
+  "type": "module",
+  "main": "src/index.js",
+  "scripts": {
+    "build-graph": "node src/build-graph.js",
+    "start": "node src/server.js",
+    "test": "node --test tests/*.test.js",
+    "viewer": "node src/server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "express": "^4.21.0"
+  },
+  "license": "Apache-2.0"
+}
