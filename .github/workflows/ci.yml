@@ -12,6 +12,20 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
-      - run: npm install
-      - run: npm run build-graph
-      - run: npm test
+      # Graph build uses only Node stdlib + fetch; tests do not require express
+      - name: Build graph (fetches ASI catalog)
+        run: npm run build-graph
+      - name: Test
+        run: npm test
+      - name: Verify counts
+        run: |
+          node -e "
+            const g=require('./data/threat-graph.json');
+            console.log(JSON.stringify(g.counts,null,2));
+            if (g.counts.nodes !== 112) process.exit(1);
+            if (g.counts.edges !== 204) process.exit(1);
+            if (g.counts.hypotheticalEdges !== 2) process.exit(1);
+            const bad = g.edges.filter(e => e.kind==='POTENTIALLY_MATCHES' && e.evidenceStatus!=='hypothetical');
+            if (bad.length) { console.error(bad); process.exit(1); }
+            console.log('OK: 112/204, 2 hypothetical only');
+          "
