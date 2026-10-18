@@ -4,15 +4,18 @@ Working MVP: interactive, evidence-backed security threat graph connecting **ASI
 
 **Hard rules observed:** no fabricated vulnerability claims, no invented attack classes/CVEs, provenance preserved, hypothetical mappings clearly marked.
 
-## One-command local startup
+## Clean clone & one-command startup
 
 ```bash
-npm install
-npm run build-graph
-npm start
+git clone https://github.com/holeyfield33-art/asi-threat-graph.git
+cd asi-threat-graph
+npm run build-graph   # fetches ASI catalog JSON if missing, writes data/threat-graph.json
+npm test              # 5 tests, no extra deps
+npm install           # express only needed for the server/viewer
+PORT=3847 npm start   # http://localhost:3847
 ```
 
-Open http://localhost:3847
+`build-graph` auto-downloads ASI export JSON from `agent-security-index` when absent. The Code Atlas sample fixture is committed under `data/code-atlas-sample.json`.
 
 ## What you get
 
@@ -46,7 +49,7 @@ Open http://localhost:3847
 
 ## Data sources (no invention)
 
-- ASI: `public/export/*.json` from holeyfield33-art/agent-security-index
+- ASI: `public/export/*.json` from holeyfield33-art/agent-security-index (fetched at build time)
 - Application: fixture shaped exactly to Code Atlas schema (`AtlasBundle` / graph nodes & edges)
 
 ## Tests
@@ -59,9 +62,9 @@ Covers import, provenance presence, status labels, and that hypothetical edges a
 
 ## Real counts (after build)
 
-- Nodes: 112 (103 ASI + 9 application)
-- Edges: 204
-- Hypothetical cross-graph edges: 2
+- Nodes: **112** (103 ASI + 9 application)
+- Edges: **204**
+- Hypothetical cross-graph edges: **2**
 
 ## Example path (hypothetical)
 
