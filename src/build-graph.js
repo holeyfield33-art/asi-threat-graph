@@ -6,6 +6,7 @@ import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
 import { fileURLToPath } from 'url';
+import { matchAttackClasses } from './match.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.join(__dirname, '..');
@@ -300,53 +301,17 @@ async function build() {
     }
   }
 
-  const hypoFrom = 'AAC-01';
-  const hypoTo = 'ATLAS:fn:src/server.ts#handlePrompt';
-  if (nodeIndex.has(hypoFrom) && nodeIndex.has(hypoTo)) {
-    addEdge({
-      id: 'edge-hypo-aac01-handlePrompt',
-      from: hypoFrom,
-      to: hypoTo,
-      kind: 'POTENTIALLY_MATCHES',
-      evidenceStatus: 'hypothetical',
-      confidence: 'low',
-      note: 'Hypothetical mapping for demonstration only. No verified vulnerability or security failure demonstrated in the sample application. Do not treat as confirmed exposure.',
-      source: {
-        identity: 'mvp-demo-rule',
-        status: 'inferred',
-        rule: 'prompt-handling-function-name-heuristic'
-      }
-    });
+  // General keyword-heuristic matcher: runs against WHATEVER application graph was
+  // loaded above (the fixture, or a real target's own Code Atlas bundle swapped into
+  // data/code-atlas-sample.json), not two hardcoded node-id strings that only ever
+  // existed in the bundled fixture. Every edge it emits is hypothetical/inferred —
+  // never upgraded — and names the exact keyword + field that triggered it.
+  const matched = matchAttackClasses(attackClasses, atlasNodes);
+  for (const e of matched.edges) {
+    if (nodeIndex.has(e.from) && nodeIndex.has(e.to)) addEdge(e);
   }
 
-  const hypo2From = 'AAC-07';
-  const hypo2To = 'ATLAS:fn:src/tools.ts#executeShell';
-  if (nodeIndex.has(hypo2From) && nodeIndex.has(hypo2To)) {
-    addEdge({
-      id: 'edge-hypo-aac07-executeShell',
-      from: hypo2From,
-      to: hypo2To,
-      kind: 'POTENTIALLY_MATCHES',
-      evidenceStatus: 'hypothetical',
-      confidence: 'low',
-      note: 'Hypothetical mapping. Shell execution capability is present; no demonstrated failure path from an attack class is claimed.',
-      source: {
-        identity: 'mvp-demo-rule',
-        status: 'inferred',
-        rule: 'tool-execution-surface-heuristic'
-      }
-    });
-  }
-
-  const unresolved = [
-    {
-      id: 'hyp-unresolved-auth-bypass',
-      description: 'No verified mapping from AAC-29 (auth-related) to checkAuth in this fixture.',
-      status: 'unresolved',
-      relatedAttackClass: 'AAC-29',
-      relatedAppNode: 'ATLAS:fn:src/auth.ts#checkAuth'
-    }
-  ];
+  const unresolved = matched.unresolved;
 
   const graph = {
     schemaVersion: '0.1.0',

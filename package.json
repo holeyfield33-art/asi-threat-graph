@@ -6,6 +6,7 @@
   "main": "src/index.js",
   "scripts": {
     "build-graph": "node src/build-graph.js",
+    "export-overlay": "node src/export-overlay.js",
     "start": "node src/server.js",
     "test": "node --test tests/*.test.js",
     "viewer": "node src/server.js"

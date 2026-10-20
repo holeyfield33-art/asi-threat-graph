@@ -28,7 +28,10 @@ PORT=3847 npm start   # http://localhost:3847
   Edges: CONTAINS, CALLS, ROUTES_TO.
 
 - **Cross-graph**  
-  Only `POTENTIALLY_MATCHES` edges that are explicitly **hypothetical** (no demonstrated security failure in the fixture). Unresolved hypotheses listed separately.
+  `src/match.js` runs a curated keyword heuristic (one list per attack class, checked against every function/class node's name and file path — see `ATTACK_CLASS_KEYWORDS`) against WHATEVER application graph was loaded, not a fixed pair of demo node ids. Every `POTENTIALLY_MATCHES` edge it emits is explicitly **hypothetical**, capped at `low`/`medium` confidence, and names the exact keyword + field that triggered it — no demonstrated security failure is ever claimed. Attack classes with zero matching nodes are listed as unresolved hypotheses instead of silently dropped.
+
+- **Point it at a real target**  
+  `data/code-atlas-sample.json` is swappable: drop any real Code Atlas `atlas.bundle.json` there (same schema) before `npm run build-graph` to match against that repo's actual code instead of the bundled fixture. `npm run export-overlay` then converts the resulting `POTENTIALLY_MATCHES` edges into Code Atlas's own `--asi-overlay` document format (`data/overlay.json`), so the leads this repo finds can be fed straight back into that same target's Threat Map view in the Code Atlas viewer.
 
 - **Viewer**  
   Pan / zoom / drag, color by type, click for description + source + confidence + evidence, search, layer & evidence-status filters.
@@ -60,22 +63,15 @@ npm test
 
 Covers import, provenance presence, status labels, and that hypothetical edges are never presented as verified vulnerabilities.
 
-## Real counts (after build)
+## Real counts (after build, against the bundled fixture)
 
 - Nodes: **112** (103 ASI + 9 application)
-- Edges: **204**
-- Hypothetical cross-graph edges: **2**
+- Edges: varies with the keyword matcher's hits on the fixture's 9 app nodes
+- Every cross-graph edge: hypothetical, never verified
 
-## Example path (hypothetical)
+## Limits
 
-`AAC-01 (Direct Prompt Injection)` --POTENTIALLY_MATCHES--> `ATLAS:fn:src/server.ts#handlePrompt` <--ROUTES_TO-- `ROUTE:POST:/api/prompt`
-
-Marked hypothetical; no verified failure claimed.
-
-## Limits of this MVP
-
-- Sample application graph only (no live GitLab/SurfaceTrace dependency).
-- Cross-graph links are heuristic and marked hypothetical.
+- Cross-graph links are a static keyword heuristic, not a data-flow prover: a hit means "worth a human/agent look," not a confirmed vulnerability.
 - No full MCP server (endpoints are MCP-adapter ready).
 - No new database; pure JSON.
 
